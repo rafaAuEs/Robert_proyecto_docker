@@ -189,4 +189,4 @@ const conectarDB = async () => {
     }
 };
 
-conectarDB();
+conectarDB();//crear una accion que avise de algo
