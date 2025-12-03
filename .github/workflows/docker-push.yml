@@ -18,7 +18,8 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    
+    environment: DOCKER
+
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
