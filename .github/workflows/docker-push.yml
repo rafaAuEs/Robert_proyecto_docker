@@ -15,14 +15,14 @@ on:
 
 env:
   DOCKER_USERNAME: rafadockerhub
-  DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/api_docker_compose
+  DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/api-crud-robert
   DOCKER_TAG: latest
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     environment: DOCKER
-      
+    
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -61,4 +61,4 @@ jobs:
         run: |
           echo "Imagen construida y subida exitosamente:"
           echo "  - Imagen: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}"
-          echo "  - Docker Hub: https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/proyecto-crud-api"
+          echo "  - Docker Hub: https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/api-crud-robert"

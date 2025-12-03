@@ -10,9 +10,9 @@ services:
       - mongo-data:/data/db
 
   api:
-    image: rafadockerhub/api_docker_compose:latest
+    image: rafadockerhub/api-crud-robert:latest
     build: .
-    container_name: api_docker_compose
+    container_name: api-crud-robert
     ports:
       - "3000:3000"
     depends_on:
