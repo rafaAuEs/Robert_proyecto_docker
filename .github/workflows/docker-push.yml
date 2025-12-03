@@ -14,13 +14,15 @@ on:
   workflow_dispatch: # Permite ejecutar manualmente
 
 env:
+  DOCKER_USERNAME: rafadockerhub
   DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/api_docker_compose
   DOCKER_TAG: latest
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
+    environment: DOCKER
+      
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
