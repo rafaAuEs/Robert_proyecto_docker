@@ -1,6 +1,5 @@
 name: Build and Push Docker Image
 
-
 on:
   push:
     branches:
@@ -18,11 +17,21 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    environment: DOCKER
 
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
+
+      - name: Verificar secretos
+        run: |
+          if [ -z "${{ secrets.DOCKER_USERNAME }}" ]; then
+            echo "::error::DOCKER_USERNAME secret is not set. Please add it to your repository secrets."
+            exit 1
+          fi
+          if [ -z "${{ secrets.DOCKER_PASSWORD }}" ]; then
+            echo "::error::DOCKER_PASSWORD secret is not set. Please add it to your repository secrets."
+            exit 1
+          fi
 
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
