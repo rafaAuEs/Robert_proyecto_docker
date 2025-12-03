@@ -1,25 +1,22 @@
-version: "3.9"
+version: "3.8"
 
 services:
-  api:
-    build: .
-    ports:
-      - "${PORT}:${PORT}"
-    environment:
-      - PORT=${PORT}
-      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@db:27017/api_local?authSource=admin
-    depends_on:
-      - db
-
-  db:
-    image: mongo:6
+  mongo:
+    image: mongo:latest
+    container_name: mongo
     ports:
       - "27017:27017"
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
       - mongo-data:/data/db
+
+  api:
+    image: rafadockerhub/api_docker_compose:latest
+    build: .
+    container_name: api_docker_compose
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongo
 
 volumes:
   mongo-data:
