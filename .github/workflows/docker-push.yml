@@ -51,3 +51,21 @@ jobs:
           echo "Imagen construida y subida exitosamente:"
           echo "  - Imagen: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}"
           echo "  - Docker Hub: https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/api-crud-robert"
+
+      - name: Enviar notificación a Telegram
+        if: success()
+        run: |
+          MESSAGE=" *Imagen Docker subida exitosamente* *Imagen:* ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}%0A🔗 *Docker Hub:* https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/api-crud-robert%0A📝 *Commit:* ${{ github.sha }}%0A👤 *Autor:* ${{ github.actor }}%0A🌿 *Rama:* ${{ github.ref_name }}"
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="$MESSAGE" \
+            -d parse_mode="Markdown"
+
+      - name: Enviar notificación de error a Telegram
+        if: failure()
+        run: |
+          MESSAGE=" *Error al subir imagen Docker* *Imagen:* ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}%0A📝 *Commit:* ${{ github.sha }}%0A👤 *Autor:* ${{ github.actor }}%0A🌿 *Rama:* ${{ github.ref_name }}%0A%0A⚠️ Revisa los logs del workflow"
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="$MESSAGE" \
+            -d parse_mode="Markdown"
