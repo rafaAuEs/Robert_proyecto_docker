@@ -10,8 +10,7 @@ dotenv.config();
 // Configuración inicial de Express
 const app = express();
 const PORT = process.env.PORT || 3000;
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/api_local";//mongodb://rafarealeisv_db_user:UcPcwzhjf5kVvzJj@localhost:27017/api_local?authSource=admin
-
+const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb://127.0.0.1:27017/api_local";
 // Middleware: Permite leer cuerpos de petición JSON
 app.use(express.json());
 

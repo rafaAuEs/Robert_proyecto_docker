@@ -1,0 +1,314 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\graphicspath{ {./Imagenes/} } 
+
+% Definir lenguaje YAML para listings
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,y,n},
+  keywordstyle=\color{blue}\bfseries,
+  basicstyle=\ttfamily\small,
+  sensitive=false,
+  comment=[l]{\#},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{gray}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  moredelim=[l][\color{orange}]{\&},
+  moredelim=[l][\color{violet}]{*},
+  moredelim=**[il][\color{violet}{:}\color{blue}]{:},
+  morestring=[b]',
+  morestring=[b]",
+  literate={:}{{\textcolor{blue}{:}}}1
+}
+
+% Configuración de listings para código
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    showstringspaces=false,
+    commentstyle=\color{gray},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    backgroundcolor=\color{gray!10},
+    extendedchars=true,
+    literate=
+}
+
+\title{Documentación API CRUD con Docker y CI/CD}
+\author{Rafael Núñez Pedrosa}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introducción}
+Este documento describe la implementación de un sistema de Integración Continua y Despliegue Continuo (CI/CD) para una API CRUD desarrollada con Node.js, Express y MongoDB. El sistema automatiza la construcción y publicación de imágenes Docker en Docker Hub mediante GitHub Actions, además de enviar notificaciones a Telegram sobre el estado del despliegue.
+
+\section{Arquitectura del Sistema}
+
+\subsection{Componentes principales}
+\begin{itemize}
+    \item \textbf{API REST:} Aplicación Node.js con Express y Mongoose
+    \item \textbf{Base de datos:} MongoDB
+    \item \textbf{Contenedorización:} Docker y Docker Compose
+    \item \textbf{CI/CD:} GitHub Actions
+    \item \textbf{Notificaciones:} Bot de Telegram
+\end{itemize}
+
+\section{Workflow de GitHub Actions}
+
+\subsection{Archivo docker-push.yml}
+El archivo \texttt{.github/workflows/docker-push.yml} define el pipeline de CI/CD que automatiza el proceso de construcción y publicación de la imagen Docker.
+
+\subsubsection{Configuración de triggers}
+\begin{lstlisting}[language=yaml,caption={Configuración de eventos que disparan el workflow}]
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'package.json'
+      - 'Dockerfile'
+      - 'main.js'
+      - 'docker-compose.yml'
+      - '.github/workflows/docker-push.yml'
+  workflow_dispatch:
+\end{lstlisting}
+
+El workflow se ejecuta automáticamente cuando:
+\begin{itemize}
+    \item Se hace push a las ramas \texttt{main} o \texttt{master}
+    \item Se modifican archivos específicos: \texttt{package.json}, \texttt{Dockerfile}, \texttt{main.js}, \texttt{docker-compose.yml} o el propio workflow
+    \item Se ejecuta manualmente mediante \texttt{workflow\_dispatch}
+\end{itemize}
+
+\subsubsection{Variables de entorno}
+\begin{lstlisting}[language=yaml,caption={Variables de entorno del workflow}]
+env:
+  DOCKER_USERNAME: rafadockerhub
+  DOCKER_IMAGE_NAME: rafadockerhub/api-crud-robert
+  DOCKER_TAG: latest
+\end{lstlisting}
+
+Estas variables definen:
+\begin{itemize}
+    \item \texttt{DOCKER\_USERNAME:} Usuario de Docker Hub
+    \item \texttt{DOCKER\_IMAGE\_NAME:} Nombre completo de la imagen Docker
+    \item \texttt{DOCKER\_TAG:} Etiqueta de la versión (latest)
+\end{itemize}
+
+\subsection{Jobs y Steps del Pipeline}
+
+\subsubsection{Job: build-and-push}
+\begin{lstlisting}[language=yaml,caption={Configuración del job principal}]
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: DOCKER
+\end{lstlisting}
+
+El job se ejecuta en un runner de Ubuntu y utiliza el entorno \texttt{DOCKER} para gestionar secrets.
+
+\subsubsection{Step 1: Checkout del código}
+\begin{lstlisting}[language=yaml,caption={Obtener el código del repositorio}]
+- name: Checkout codigo
+  uses: actions/checkout@v4
+\end{lstlisting}
+
+Este step descarga el código fuente del repositorio en el runner.
+
+\subsubsection{Step 2: Configuración de Docker Buildx}
+\begin{lstlisting}[language=yaml,caption={Configurar Docker Buildx}]
+- name: Configurar Docker Buildx
+  uses: docker/setup-buildx-action@v3
+\end{lstlisting}
+
+Docker Buildx es una extensión de Docker CLI que permite construcciones avanzadas con caché y soporte multi-plataforma.
+
+\subsubsection{Step 3: Login en Docker Hub}
+\begin{lstlisting}[language=yaml,caption={Autenticación en Docker Hub}]
+- name: Login a Docker Hub
+  uses: docker/login-action@v3
+  with:
+    username: ${{ secrets.DOCKER_USERNAME }}
+    password: ${{ secrets.DOCKER_PASSWORD }}
+\end{lstlisting}
+
+Autentica el runner en Docker Hub utilizando credenciales almacenadas en GitHub Secrets:
+\begin{itemize}
+    \item \texttt{secrets.DOCKER\_USERNAME:} Usuario de Docker Hub
+    \item \texttt{secrets.DOCKER\_PASSWORD:} Token o contraseña de Docker Hub
+\end{itemize}
+
+\subsubsection{Step 4: Construcción y publicación de la imagen}
+\begin{lstlisting}[language=yaml,caption={Build y push de la imagen Docker}]
+- name: Construir y subir imagen Docker
+  uses: docker/build-push-action@v5
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}
+    cache-from: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache
+    cache-to: type=inline
+\end{lstlisting}
+
+Parámetros importantes:
+\begin{itemize}
+    \item \texttt{context:} Directorio de contexto para la construcción
+    \item \texttt{file:} Ubicación del Dockerfile
+    \item \texttt{push:} Sube la imagen a Docker Hub automáticamente
+    \item \texttt{tags:} Etiquetas aplicadas a la imagen
+    \item \texttt{cache-from/cache-to:} Optimización mediante caché de capas
+\end{itemize}
+
+\subsubsection{Step 5: Información de la imagen}
+\begin{lstlisting}[language=yaml,caption={Mostrar información de la imagen construida}]
+- name: Mostrar informacion de la imagen
+  run: |
+    echo "Imagen construida y subida exitosamente:"
+    echo "  - Imagen: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}"
+    echo "  - Docker Hub: https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/api-crud-robert"
+\end{lstlisting}
+
+Muestra información relevante en los logs del workflow.
+
+\subsection{Sistema de Notificaciones a Telegram}
+
+\subsubsection{Notificación de éxito}
+\begin{lstlisting}[language=yaml,caption={Notificación cuando el despliegue es exitoso}]
+- name: Enviar notificacion a Telegram
+  if: success()
+  run: |
+    MESSAGE=" *Imagen Docker subida exitosamente* *Imagen:* ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}%0A *Docker Hub:* https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/api-crud-robert%0A *Commit:* ${{ github.sha }}%0A *Autor:* ${{ github.actor }}%0A *Rama:* ${{ github.ref_name }}"
+    curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+      -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+      -d text="$MESSAGE" \
+      -d parse_mode="Markdown"
+\end{lstlisting}
+
+Este step se ejecuta solo si todos los steps anteriores fueron exitosos (\texttt{if: success()}). El mensaje incluye:
+\begin{itemize}
+    \item Nombre y etiqueta de la imagen
+    \item Enlace a Docker Hub
+    \item Hash del commit
+    \item Autor del commit
+    \item Rama desde la que se hizo el push
+\end{itemize}
+
+\subsubsection{Notificación de error}
+\begin{lstlisting}[language=yaml,caption={Notificación cuando ocurre un error}]
+- name: Enviar notificacion de error a Telegram
+  if: failure()
+  run: |
+    MESSAGE=" *Error al subir imagen Docker* *Imagen:* ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}%0A *Commit:* ${{ github.sha }}%0A *Autor:* ${{ github.actor }}%0A *Rama:* ${{ github.ref_name }}%0A%0A Revisa los logs del workflow"
+    curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+      -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+      -d text="$MESSAGE" \
+      -d parse_mode="Markdown"
+\end{lstlisting}
+
+Este step se ejecuta solo si algún step anterior falló (\texttt{if: failure()}), alertando al equipo sobre el problema.
+
+\section{Configuración de Secrets}
+
+\subsection{Secrets requeridos en GitHub}
+Para que el workflow funcione correctamente, es necesario configurar los siguientes secrets en el repositorio:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|p{8cm}|}
+\hline
+\textbf{Secret} & \textbf{Descripción} \\
+\hline
+\texttt{DOCKER\_USERNAME} & Usuario de Docker Hub \\
+\hline
+\texttt{DOCKER\_PASSWORD} & Token de acceso o contraseña de Docker Hub \\
+\hline
+\texttt{TELEGRAM\_BOT\_TOKEN} & Token del bot de Telegram (obtenido de @BotFather) \\
+\hline
+\texttt{TELEGRAM\_CHAT\_ID} & ID del chat o canal donde se enviarán las notificaciones \\
+\hline
+\end{tabular}
+\caption{Secrets necesarios para el workflow}
+\end{table}
+
+\subsection{Cómo configurar los secrets}
+\begin{enumerate}
+    \item Ir al repositorio en GitHub
+    \item Navegar a \texttt{Settings → Secrets and variables → Actions}
+    \item Click en \texttt{New repository secret}
+    \item Agregar cada secret con su nombre y valor correspondiente
+\end{enumerate}
+
+\section{Flujo de Trabajo Completo}
+
+\subsection{Proceso automatizado}
+\begin{enumerate}
+    \item El desarrollador realiza cambios en el código
+    \item Se hace commit y push a la rama \texttt{main} o \texttt{master}
+    \item GitHub Actions detecta el push (si afecta archivos relevantes)
+    \item Se ejecuta el workflow:
+    \begin{itemize}
+        \item Se descarga el código
+        \item Se configura Docker Buildx
+        \item Se autentica en Docker Hub
+        \item Se construye la imagen Docker
+        \item Se sube la imagen a Docker Hub
+        \item Se muestra información en los logs
+    \end{itemize}
+    \item Si todo es exitoso:
+    \begin{itemize}
+        \item Se envía notificación de éxito a Telegram
+    \end{itemize}
+    \item Si ocurre un error:
+    \begin{itemize}
+        \item Se envía notificación de error a Telegram
+    \end{itemize}
+\end{enumerate}
+
+\section{Ventajas del Sistema}
+
+\subsection{Automatización}
+\begin{itemize}
+    \item Eliminación de pasos manuales propensos a errores
+    \item Ahorro de tiempo en el proceso de despliegue
+    \item Construcción consistente de imágenes Docker
+\end{itemize}
+
+\subsection{Trazabilidad}
+\begin{itemize}
+    \item Historial completo de builds en GitHub Actions
+    \item Información detallada del commit asociado a cada imagen
+    \item Identificación rápida del autor y rama
+\end{itemize}
+
+\subsection{Notificaciones en tiempo real}
+\begin{itemize}
+    \item Alertas inmediatas en Telegram sobre el estado del despliegue
+    \item Información contextual del build
+    \item Notificaciones tanto de éxito como de error
+\end{itemize}
+
+\subsection{Optimización}
+\begin{itemize}
+    \item Uso de caché para acelerar construcciones
+    \item Ejecución solo cuando hay cambios relevantes
+    \item Construcción paralela con Docker Buildx
+\end{itemize}
+
+\section{Conclusiones}
+La implementación de este pipeline CI/CD con GitHub Actions proporciona un flujo de trabajo automatizado, eficiente y confiable para el despliegue de la aplicación. La integración con Telegram permite al equipo mantenerse informado en tiempo real sobre el estado de los despliegues, facilitando una respuesta rápida ante cualquier problema.
+
+\end{document}
